@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vélo Libre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout : tableau de bord de sportive. Deux vues : GARAGE (préparer) et COCKPIT (rouler, plein écran).
+   Look volontairement sombre unique (habitacle), pas de thème clair. */
+:root{
+  --carbon:#090b0e; --panel:#12161c; --panel2:#181d25; --edge:#262d38; --edge-hi:#37404e;
+  --fg:#e9edf2; --muted:#8a94a5; --dim:#545e6e;
+  --red:#ff3d1f; --amber:#ffb020; --green:#3ee08f; --cyan:#33c7ff;
+  --display:"Chakra Petch","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #1a2130 0%, transparent 60%),
+    repeating-linear-gradient(45deg, #0b0e12 0 2px, #090b0e 2px 4px);
+  background-color:var(--carbon); color:var(--fg); font:15px/1.45 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:16px 32px;
+}
+[hidden]{display:none!important}
+.disp{font-family:var(--display);text-transform:uppercase;letter-spacing:.06em}
+.tab{font-variant-numeric:tabular-nums}
+
+/* ---------- boutons ---------- */
+button{font:600 14px var(--display);text-transform:uppercase;letter-spacing:.08em;cursor:pointer;
+  color:var(--fg);background:linear-gradient(#1d232c,#151a21);border:1px solid var(--edge-hi);border-radius:8px;padding:10px 16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 2px 0 #05070a}
+button:hover{border-color:#4b5566}
+button:active{transform:translateY(1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.go{background:linear-gradient(#ff5233,#d92d12);border-color:#ff6a4d;color:#fff;box-shadow:0 0 0 1px #000,0 6px 24px rgba(255,61,31,.35),inset 0 1px 0 rgba(255,255,255,.25)}
+button.ghost{background:transparent;box-shadow:none;border-color:var(--edge)}
+button.sm{padding:6px 9px;font-size:12px;min-width:30px}
+
+/* ---------- GARAGE ---------- */
+.garage{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand svg{width:40px;height:40px}
+.brand h1{margin:0;font:700 26px/1 var(--display);letter-spacing:.14em;text-transform:uppercase}
+.brand h1 b{color:var(--red)}
+.brand small{display:block;font:500 11px var(--display);letter-spacing:.3em;color:var(--muted);margin-top:4px}
+.conn{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.led{width:10px;height:10px;border-radius:50%;background:#3a1a16;box-shadow:inset 0 0 2px #000}
+.led.on{background:var(--green);box-shadow:0 0 10px var(--green)}
+.led.sim{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.conntxt{font:600 13px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.conntxt.on{color:var(--fg)}
+
+.plate{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--edge);border-radius:14px;padding:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:14px;min-width:0}
+.plate h2{margin:0;font:600 14px var(--display);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+.plate h2::before{content:"";width:18px;height:2px;background:var(--red)}
+.ghead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ro{background:#0c0f13;border:1px solid var(--edge);border-radius:10px;padding:10px 12px;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.ro .k{font:600 10px var(--display);letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
+.ro .v{font:600 28px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.ro .v small{font:500 12px var(--body);color:var(--muted);margin-left:4px}
+
+.gl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:18px;align-items:start}
+@media (max-width:900px){.gl{grid-template-columns:minmax(0,1fr)}}
+
+.plist{display:flex;flex-direction:column;gap:8px}
+.pcard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;text-align:left;
+  background:#0e1216;border:1px solid var(--edge);border-radius:10px;padding:12px;cursor:pointer;color:var(--fg);
+  font:inherit;text-transform:none;letter-spacing:0;box-shadow:none}
+.pcard:hover{border-color:var(--edge-hi)}
+.pcard.sel{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 20px rgba(255,61,31,.15)}
+.pcard .nm{font:600 16px var(--display);letter-spacing:.04em}
+.pcard .meta{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.pcard svg{grid-column:1/-1;width:100%;height:26px;display:block}
+
+.editor{display:flex;flex-direction:column;gap:12px}
+label{font:600 10px var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--muted);display:flex;flex-direction:column;gap:5px}
+input,select{font:500 15px var(--body);color:var(--fg);background:#0b0e12;border:1px solid var(--edge);border-radius:8px;padding:8px 10px;min-width:0;box-shadow:inset 0 2px 6px rgba(0,0,0,.5)}
+.namerow{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.namerow label{flex:1 1 200px}
+.profile{background:#0b0e12;border:1px solid var(--edge);border-radius:10px;padding:10px;box-shadow:inset 0 2px 8px rgba(0,0,0,.6)}
+.profile canvas{width:100%;display:block}
+.bhead,.blk{display:grid;grid-template-columns:24px minmax(0,1fr) 78px 64px 132px;gap:8px;align-items:center}
+.bhead{font:600 10px var(--display);letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.blk .n{font:600 13px var(--display);color:var(--dim);text-align:right}
+.blk .acts{display:flex;gap:3px}
+.blk input[data-f="res"]{color:var(--red);font-weight:600}
+@media (max-width:460px){.bhead,.blk{grid-template-columns:20px minmax(0,1fr) 64px 54px}.blk .acts{grid-column:2/-1;justify-content:flex-end}.bhead span:last-child{display:none}}
+.blocks{display:flex;flex-direction:column;gap:6px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sum{display:flex;justify-content:space-between;gap:10px;font:600 13px var(--display);letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.sum b{color:var(--fg)}
+.launch{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--edge);padding-top:14px}
+.launch .go{padding:14px 26px;font-size:16px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.alert{border:1px solid var(--amber);background:rgba(255,176,32,.08);border-radius:10px;padding:10px 14px;font-size:14px}
+.hist{display:flex;flex-direction:column}
+.hist .h{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 0;border-bottom:1px solid var(--edge);font-size:13px;font-variant-numeric:tabular-nums}
+.hist .h b{font:600 14px var(--display);letter-spacing:.04em}
+.hist .h span{color:var(--muted)}
+details summary{cursor:pointer;font:600 12px var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.log{font:12px/1.5 ui-monospace,Consolas,monospace;background:#07090c;border:1px solid var(--edge);border-radius:8px;padding:8px;max-height:170px;overflow:auto;white-space:pre-wrap;word-break:break-word;color:#9fb0c4}
+
+/* ---------- COCKPIT ---------- */
+.cockpit{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px;min-height:100%}
+.cbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.cbar .pn{font:700 18px var(--display);letter-spacing:.14em;text-transform:uppercase}
+.cbar .el{font:600 14px var(--display);letter-spacing:.1em;color:var(--muted)}
+.dash{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:center;
+  background:linear-gradient(180deg,#141922,#0d1015);border:1px solid var(--edge);border-radius:22px;padding:18px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 -30px 60px rgba(0,0,0,.4),0 20px 50px rgba(0,0,0,.5)}
+@media (max-width:820px){.dash{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.center{grid-column:1/-1;order:-1}}
+.gauge{width:100%;max-width:320px;aspect-ratio:1;margin:0 auto;display:block}
+.center{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;min-width:0}
+.blabel{font:700 clamp(18px,2.6vw,26px)/1.1 var(--display);letter-spacing:.12em;text-transform:uppercase}
+.count{font:700 clamp(64px,10vw,124px)/.9 var(--display);font-variant-numeric:tabular-nums;letter-spacing:.02em;
+  text-shadow:0 0 30px rgba(255,255,255,.08)}
+.count.hot{color:var(--amber);text-shadow:0 0 30px rgba(255,176,32,.35)}
+.shift{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;max-width:100%;padding:8px 10px;background:#07090c;border:1px solid var(--edge);border-radius:10px}
+.shift i{width:clamp(8px,1.3vw,14px);height:22px;border-radius:3px;background:#1a1f27;box-shadow:inset 0 0 3px #000}
+.shift i.on{background:var(--c);box-shadow:0 0 10px var(--c),inset 0 0 2px rgba(255,255,255,.4)}
+.shift i.tgt{outline:1px solid var(--fg);outline-offset:1px}
+.resrow{display:flex;align-items:center;gap:14px}
+.resrow .rv{font:700 44px/1 var(--display);color:var(--red);min-width:70px;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(255,61,31,.4)}
+.resrow .rk{font:600 10px var(--display);letter-spacing:.25em;color:var(--muted)}
+.resrow button{width:52px;height:52px;padding:0;font-size:24px;border-radius:50%}
+.next{font:600 13px var(--display);letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+.next b{color:var(--fg)}
+.cstrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.cstrip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.track{background:#0b0e12;border:1px solid var(--edge);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.track canvas{width:100%;display:block}
+.legend{display:flex;gap:16px;font:600 10px var(--display);letter-spacing:.18em;color:var(--muted);text-transform:uppercase}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.ctrl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ctrl button{min-width:150px;padding:14px 20px}
+.pbar{height:6px;border-radius:3px;background:#1a1f27;overflow:hidden}
+.pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));transition:width .5s linear}
+
+.finish{position:fixed;inset:0;background:rgba(5,6,8,.82);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:20;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.finish .card{width:min(520px,100%);background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--edge-hi);border-radius:18px;padding:24px;display:flex;flex-direction:column;gap:16px;text-align:center}
+.finish h3{margin:0;font:700 26px var(--display);letter-spacing:.16em;text-transform:uppercase}
+.finish .fg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+
+/* coach */
+.cgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.cgrid{grid-template-columns:minmax(0,1fr)}}
+.ccol{display:flex;flex-direction:column;gap:12px;min-width:0}
+.strip2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ro .v.z{font-size:22px}
+.prof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
+@media (max-width:460px){.prof{grid-template-columns:minmax(0,1fr)}}
+.wform{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.wform label{flex:1 1 110px}
+.wsum{display:flex;gap:16px;flex-wrap:wrap;font:600 13px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.wsum b{color:var(--fg);font-size:16px}
+.wlist{display:flex;flex-direction:column;font-size:13px;font-variant-numeric:tabular-nums}
+.wlist div{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--edge)}
+.wlist span{color:var(--muted)}
+.hrtag{font:600 12px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.hrtag .led{width:8px;height:8px}
+.cbanner{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 18px;align-items:center;border:1px solid var(--edge);border-radius:14px;padding:12px 16px;background:#0c0f13}
+.cbanner .hr{font:700 40px/1 var(--display);font-variant-numeric:tabular-nums;grid-row:span 2}
+.cbanner .hr small{font:600 12px var(--display);color:var(--muted);margin-left:4px;letter-spacing:.15em}
+.cbanner .zt{font:600 12px var(--display);letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+.cbanner .msg{font:600 17px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.cbanner.low .hr{color:var(--cyan)} .cbanner.in .hr{color:var(--green)} .cbanner.high .hr{color:var(--amber)}
+.cbanner.red{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 24px rgba(255,61,31,.25)} .cbanner.red .hr{color:var(--red)}
+.cbanner.in{border-color:rgba(62,224,143,.5)}
+.fbrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.fbrow button{padding:14px 8px}
+@media (prefers-reduced-motion:reduce){.pbar i{transition:none}}
+</style>
+</head>
+<body>
+
+<!-- ================= GARAGE ================= -->
+<div class="garage" id="vGarage">
+  <div class="top">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="17" fill="none" stroke="#262d38" stroke-width="3"/>
+        <path d="M7.5 29 A17 17 0 1 1 32.5 29" fill="none" stroke="#ff3d1f" stroke-width="3" stroke-linecap="round" stroke-dasharray="70 200"/>
+        <line x1="20" y1="20" x2="29" y2="11" stroke="#e9edf2" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="20" cy="20" r="3" fill="#e9edf2"/>
+      </svg>
+      <div><h1>Vélo <b>Libre</b></h1><small>Domyos · FTMS</small></div>
+    </div>
+    <div class="conn">
+      <span class="led" id="led"></span><span class="conntxt" id="connTxt">Non connecté</span>
+      <button class="go" id="btnConnect">Connecter le vélo</button>
+      <button class="ghost" id="btnSim">Mode démo</button>
+      <button class="ghost" id="btnDisc" hidden>Déconnecter</button>
+    </div>
+  </div>
+
+  <div class="alert" id="noBt" hidden>Ce navigateur ne gère pas le Bluetooth. Ouvre ce fichier dans <b>Chrome</b> ou <b>Edge</b> sur PC (ou Chrome sur Android). Le mode démo marche partout.</div>
+
+  <div class="plate">
+    <div class="ghead"><h2>Télémétrie</h2><span class="hint" id="rangeTxt">Résistance 1 à 16</span></div>
+    <div class="strip">
+      <div class="ro"><div class="k">Vitesse</div><div class="v" id="gSpeed">–<small>km/h</small></div></div>
+      <div class="ro"><div class="k">Cadence</div><div class="v" id="gCad">–<small>tr/min</small></div></div>
+      <div class="ro"><div class="k">Puissance</div><div class="v" id="gPow">–<small>W</small></div></div>
+      <div class="ro"><div class="k">Résistance</div><div class="v" id="gRes" style="color:var(--red)">–</div></div>
+    </div>
+  </div>
+
+  <div class="plate">
+    <div class="ghead"><h2>Coach perte de poids</h2>
+      <div class="tools"><span class="hrtag"><span class="led" id="hrLed"></span><span id="hrTxt">Cardio : aucun</span></span><button class="sm" id="btnHr">Connecter le cardio</button></div>
+    </div>
+    <div class="cgrid">
+      <div class="ccol">
+        <div class="strip2">
+          <div class="ro"><div class="k">Prochaine séance</div><div class="v tab" id="cDur">–</div></div>
+          <div class="ro"><div class="k">Résistance de base</div><div class="v tab" id="cBase" style="color:var(--red)">–</div></div>
+          <div class="ro"><div class="k">Zone cardio cible</div><div class="v z tab" id="cZone">–</div></div>
+          <div class="ro"><div class="k">Séances cette semaine</div><div class="v tab" id="cWeek">–</div></div>
+        </div>
+        <p class="hint" id="coachHint"></p>
+        <details>
+          <summary>Mon profil</summary>
+          <div class="prof">
+            <label>Âge<input id="pfAge" type="number" min="14" max="99" inputmode="numeric"></label>
+            <label>Séances / semaine<input id="pfWeek" type="number" min="1" max="7" inputmode="numeric"></label>
+            <label>Durée max (min)<input id="pfMax" type="number" min="10" max="60" inputmode="numeric"></label>
+          </div>
+          <p class="hint" style="margin-top:8px">La zone cible est calculée à partir de ton âge (60 à 70 % de ta fréquence max estimée). Si ton médecin te donne une autre zone, dis-le-moi et je l'ajoute.</p>
+        </details>
+        <div class="launch">
+          <span class="hint">Échauffement 3 min, zone brûle-graisses, retour au calme 3 min.</span>
+          <button class="go" id="btnCoach">Lancer la séance coach</button>
+        </div>
+      </div>
+      <div class="ccol">
+        <div class="wform">
+          <label>Poids (kg)<input id="wKg" type="number" step="0.1" min="30" max="300" inputmode="decimal"></label>
+          <label>Date<input id="wDate" type="date"></label>
+          <button id="wAdd">Ajouter</button>
+        </div>
+        <div class="profile"><canvas id="wChart" height="140"></canvas></div>
+        <div class="wsum" id="wSum"></div>
+        <details><summary>Pesées enregistrées</summary><div class="wlist" id="wList" style="margin-top:8px"></div></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="gl">
+    <div class="plate">
+      <div class="ghead"><h2>Programmes</h2>
+        <div class="tools"><button class="sm" id="pNew">+ Nouveau</button></div>
+      </div>
+      <div class="plist" id="plist"></div>
+      <details>
+        <summary>Historique des séances</summary>
+        <div class="hist" id="hist" style="margin-top:8px"></div>
+      </details>
+    </div>
+
+    <div class="plate editor">
+      <div class="ghead"><h2>Réglages du programme</h2>
+        <div class="tools"><button class="sm ghost" id="pDup">Dupliquer</button><button class="sm ghost" id="pDel">Supprimer</button></div>
+      </div>
+      <div class="namerow"><label>Nom du programme<input id="pName" maxlength="40"></label></div>
+      <div class="profile"><canvas id="progChart" height="90"></canvas></div>
+      <div class="bhead"><span></span><span>Bloc</span><span>Durée</span><span>Résist.</span><span></span></div>
+      <div class="blocks" id="blocks"></div>
+      <div class="tools">
+        <button class="sm" id="bAdd">+ Bloc</button>
+        <button class="sm" id="bRep">Répéter les 2 derniers ×</button>
+        <input id="bRepN" type="number" min="1" max="20" value="3" style="width:64px" aria-label="Nombre de répétitions">
+      </div>
+      <div class="sum"><span id="tBlocks">0 bloc</span><span>Durée <b id="tDur">0:00</b></span></div>
+      <p class="hint">Durée en <b>min:sec</b> (ex. 2:30) ou en secondes.</p>
+      <div class="launch">
+        <span class="hint" id="launchHint">Connecte le vélo ou lance le mode démo.</span>
+        <button class="go" id="btnRide">Démarrer la séance</button>
+      </div>
+      <details>
+        <summary>Avancé / dépannage</summary>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+          <label>Format d'envoi de la résistance
+            <select id="encSel">
+              <option value="u8x10">Norme FTMS (1 octet, ×0,1)</option>
+              <option value="s16x10">2 octets, ×0,1</option>
+              <option value="u8x1">1 octet, valeur brute</option>
+            </select>
+          </label>
+          <p class="hint">Si la résistance ne bouge pas avec + / −, essaie un autre format et regarde le journal.</p>
+          <div class="log" id="log"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<!-- ================= COCKPIT ================= -->
+<div class="cockpit" id="vRide" hidden>
+  <div class="cbar">
+    <div><div class="pn" id="rName">Programme</div><div class="el tab" id="rElapsed">0:00 / 0:00</div></div>
+    <div class="conn"><span class="led" id="led2"></span><span class="conntxt" id="connTxt2"></span></div>
+  </div>
+  <div class="pbar"><i id="progBar"></i></div>
+  <div class="cbanner" id="cBanner" hidden>
+    <div class="hr" id="cbHr">–<small>BPM</small></div>
+    <div class="zt" id="cbZone"></div>
+    <div class="msg" id="cbMsg">On s'échauffe tranquille</div>
+  </div>
+
+  <div class="dash">
+    <canvas class="gauge" id="gaugeSpeed" width="320" height="320" aria-label="Compteur de vitesse"></canvas>
+    <div class="center">
+      <div class="blabel" id="curLbl">Prêt</div>
+      <div class="count" id="curCd">--:--</div>
+      <div class="shift" id="shift" aria-label="Résistance"></div>
+      <div class="resrow">
+        <button id="resMinus" aria-label="Baisser la résistance">−</button>
+        <div><div class="rv" id="rRes">–</div><div class="rk">Résistance</div></div>
+        <button id="resPlus" aria-label="Monter la résistance">+</button>
+      </div>
+      <div class="next" id="nextLbl"></div>
+    </div>
+    <canvas class="gauge" id="gaugeCad" width="320" height="320" aria-label="Compte-tours cadence"></canvas>
+  </div>
+
+  <div class="cstrip">
+    <div class="ro"><div class="k">Puissance</div><div class="v" id="rPow">–<small>W</small></div></div>
+    <div class="ro"><div class="k">Distance</div><div class="v" id="rDist">–<small>km</small></div></div>
+    <div class="ro"><div class="k">Calories</div><div class="v" id="rKcal">–<small>kcal</small></div></div>
+    <div class="ro"><div class="k">Cardio</div><div class="v" id="rHr">–<small>bpm</small></div></div>
+  </div>
+
+  <div class="track">
+    <canvas id="rideProg" height="46"></canvas>
+    <canvas id="liveChart" height="150"></canvas>
+    <div class="legend"><span><i style="background:var(--red)"></i>Résistance</span><span><i style="background:var(--cyan)"></i>Vitesse</span></div>
+  </div>
+
+  <div class="ctrl">
+    <button id="btnPause">Pause</button>
+    <button class="go" id="btnStop">Terminer</button>
+  </div>
+</div>
+
+<div class="finish" id="finish" hidden>
+  <div class="card">
+    <h3>Séance terminée</h3>
+    <div class="fg" id="finStats"></div>
+    <div id="fb" hidden style="display:flex;flex-direction:column;gap:10px">
+      <p class="hint">C'était comment ? Le coach ajuste la prochaine séance.</p>
+      <div class="fbrow"><button id="fbHard">Trop dur</button><button id="fbOk">Parfait</button><button id="fbEasy">Trop facile</button></div>
+    </div>
+    <p class="hint" id="fbDone" hidden></p>
+    <button class="go" id="btnBack">Retour au garage</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+const fmt = s => { s=Math.max(0,Math.round(s)); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60;
+  return (h? h+':'+String(m).padStart(2,'0') : m)+':'+String(x).padStart(2,'0'); };
+const parseDur = t => { t=String(t).trim(); if(t.includes(':')){ const [m,s]=t.split(':'); return (parseInt(m)||0)*60+(parseInt(s)||0);} return parseInt(t)||0; };
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function log(msg){ const el=$('log'); el.textContent=`${new Date().toLocaleTimeString('fr-FR')}  ${msg}\n`+el.textContent.slice(0,6000); }
+
+/* ===== Programmes ===== */
+const DEFAULTS = [
+  { id:'p1', name:'Pyramide 20 min', blocks:[
+    {label:'Échauffement',dur:180,res:3},{label:'Palier 1',dur:120,res:5},{label:'Palier 2',dur:120,res:7},
+    {label:'Palier 3',dur:120,res:9},{label:'Sommet',dur:120,res:11},{label:'Palier 3',dur:120,res:9},
+    {label:'Palier 2',dur:120,res:7},{label:'Palier 1',dur:120,res:5},{label:'Retour au calme',dur:180,res:2}]},
+  { id:'p2', name:'Fractionné 30/30', blocks:[
+    {label:'Échauffement',dur:300,res:3},
+    ...Array.from({length:8},()=>[{label:'Sprint',dur:30,res:10},{label:'Récup',dur:30,res:3}]).flat(),
+    {label:'Retour au calme',dur:240,res:2}]}
+];
+let programs = store.get('vl_programs',null) || DEFAULTS;
+let curId = store.get('vl_cur', programs[0].id);
+if(!programs.find(p=>p.id===curId)) curId=programs[0].id;
+const cur = () => programs.find(p=>p.id===curId);
+const save = () => { store.set('vl_programs',programs); store.set('vl_cur',curId); };
+const totalOf = p => p.blocks.reduce((a,b)=>a+b.dur,0);
+
+let range = { min:1, max:16, inc:1 };
+const clampRes = r => Math.min(range.max, Math.max(range.min, Math.round(r/range.inc)*range.inc));
+const resFrac = r => (r-range.min)/((range.max-range.min)||1);
+const resColor = f => f<.5 ? css('--green') : f<.78 ? css('--amber') : css('--red');
+
+function miniSvg(p){
+  const t=totalOf(p)||1; let x=0;
+  return `<svg viewBox="0 0 300 26" preserveAspectRatio="none" aria-hidden="true">${p.blocks.map(b=>{
+    const w=b.dur/t*300, f=resFrac(b.res), h=4+f*22, r=`<rect x="${x.toFixed(2)}" y="${(26-h).toFixed(2)}" width="${Math.max(.6,w-.8).toFixed(2)}" height="${h.toFixed(2)}" fill="${resColor(f)}" opacity=".85"/>`; x+=w; return r; }).join('')}</svg>`;
+}
+function renderList(){
+  $('plist').innerHTML = programs.map(p=>`<button class="pcard${p.id===curId?' sel':''}" data-id="${p.id}">
+    <span class="nm">${esc(p.name)}</span><span class="meta">${fmt(totalOf(p))} · ${p.blocks.length} blocs</span>${miniSvg(p)}</button>`).join('');
+}
+$('plist').addEventListener('click',e=>{ const c=e.target.closest('.pcard'); if(!c) return; curId=c.dataset.id; save(); renderAll(); });
+
+function renderBlocks(){
+  const p=cur();
+  $('pName').value=p.name;
+  $('blocks').innerHTML = p.blocks.map((b,i)=>`
+    <div class="blk" data-i="${i}">
+      <span class="n">${i+1}</span>
+      <input data-f="label" value="${esc(b.label)}" aria-label="Nom du bloc ${i+1}" id="bl-l-${i}">
+      <input data-f="dur" value="${fmt(b.dur)}" inputmode="numeric" aria-label="Durée du bloc ${i+1}" id="bl-d-${i}">
+      <input data-f="res" type="number" value="${b.res}" min="${range.min}" max="${range.max}" step="${range.inc}" aria-label="Résistance du bloc ${i+1}" id="bl-r-${i}">
+      <span class="acts">
+        <button class="sm ghost" data-a="up" aria-label="Monter le bloc">↑</button>
+        <button class="sm ghost" data-a="down" aria-label="Descendre le bloc">↓</button>
+        <button class="sm ghost" data-a="copy" aria-label="Dupliquer le bloc">⧉</button>
+        <button class="sm ghost" data-a="del" aria-label="Supprimer le bloc">✕</button>
+      </span>
+    </div>`).join('');
+  $('tBlocks').textContent = `${p.blocks.length} bloc${p.blocks.length>1?'s':''}`;
+  $('tDur').textContent = fmt(totalOf(p));
+  drawProfile($('progChart'), p, -1, 0);
+}
+function renderAll(){ renderList(); renderBlocks(); }
+
+$('blocks').addEventListener('change',e=>{
+  const row=e.target.closest('.blk'); if(!row) return;
+  const b=cur().blocks[+row.dataset.i], f=e.target.dataset.f;
+  if(f==='label') b.label=e.target.value||'Bloc';
+  if(f==='dur') b.dur=Math.max(5,parseDur(e.target.value));
+  if(f==='res') b.res=clampRes(parseFloat(e.target.value)||range.min);
+  save(); renderAll();
+});
+$('blocks').addEventListener('click',e=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  const i=+btn.closest('.blk').dataset.i, bl=cur().blocks, a=btn.dataset.a;
+  if(a==='up'&&i>0) [bl[i-1],bl[i]]=[bl[i],bl[i-1]];
+  if(a==='down'&&i<bl.length-1) [bl[i+1],bl[i]]=[bl[i],bl[i+1]];
+  if(a==='copy') bl.splice(i+1,0,{...bl[i]});
+  if(a==='del'&&bl.length>1) bl.splice(i,1);
+  save(); renderAll();
+});
+$('bAdd').onclick=()=>{ const bl=cur().blocks, l=bl[bl.length-1]; bl.push({label:'Bloc',dur:60,res:l?l.res:range.min}); save(); renderAll(); };
+$('bRep').onclick=()=>{ const bl=cur().blocks; if(bl.length<2) return; const n=Math.min(20,Math.max(1,+$('bRepN').value||1)), pair=bl.slice(-2);
+  for(let k=0;k<n;k++) bl.push(...pair.map(b=>({...b}))); save(); renderAll(); };
+$('pName').oninput=e=>{ cur().name=e.target.value||'Sans nom'; save(); renderList(); };
+$('pNew').onclick=()=>{ const mid=Math.round((range.min+range.max)/2);
+  const p={id:'p'+Date.now(),name:'Mon programme',blocks:[{label:'Échauffement',dur:300,res:clampRes(range.min+2)},{label:'Effort',dur:600,res:mid},{label:'Retour au calme',dur:180,res:range.min}]};
+  programs.push(p); curId=p.id; save(); renderAll(); };
+$('pDup').onclick=()=>{ const p=JSON.parse(JSON.stringify(cur())); p.id='p'+Date.now(); p.name+=' (copie)'; programs.push(p); curId=p.id; save(); renderAll(); };
+let delArmed=false;
+$('pDel').onclick=()=>{ if(programs.length<2) return;
+  if(!delArmed){ delArmed=true; $('pDel').textContent='Confirmer ?'; setTimeout(()=>{ delArmed=false; $('pDel').textContent='Supprimer'; },3000); return; }
+  programs=programs.filter(p=>p.id!==curId); curId=programs[0].id; delArmed=false; $('pDel').textContent='Supprimer'; save(); renderAll(); };
+
+/* ===== Dessins ===== */
+function prep(c){ const dpr=window.devicePixelRatio||1, w=c.clientWidth||c.width, h=+c.getAttribute('height');
+  c.width=w*dpr; c.height=h*dpr; c.style.height=h+'px'; const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); return {g,w,h}; }
+
+function drawProfile(c,p,activeIdx,elapsed){
+  const {g,w,h}=prep(c), t=totalOf(p)||1; let x=0;
+  g.strokeStyle='rgba(255,255,255,.05)'; for(let k=1;k<4;k++){ g.beginPath(); g.moveTo(0,h*k/4); g.lineTo(w,h*k/4); g.stroke(); }
+  p.blocks.forEach((b,i)=>{ const bw=b.dur/t*w, f=resFrac(b.res), bh=4+f*(h-6);
+    g.globalAlpha = activeIdx<0 ? .9 : i===activeIdx ? 1 : i<activeIdx ? .25 : .6;
+    g.fillStyle=resColor(f); g.fillRect(x+.5,h-bh,Math.max(1,bw-1),bh); x+=bw; });
+  g.globalAlpha=1;
+  if(activeIdx>=0){ const px=elapsed/t*w; g.fillStyle='#fff'; g.shadowColor='#fff'; g.shadowBlur=8; g.fillRect(px-1,0,2,h); g.shadowBlur=0; }
+}
+
+const gaugeState = { speed:0, cad:0 };
+function drawGauge(c, val, opt){
+  const dpr=window.devicePixelRatio||1, S=c.clientWidth||320;
+  if(c.width!==Math.round(S*dpr)){ c.width=Math.round(S*dpr); c.height=Math.round(S*dpr); }
+  const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,S,S);
+  const cx=S/2, cy=S/2, r=S*.42, a0=Math.PI*.75, sweep=Math.PI*1.5, A=v=>a0+sweep*Math.min(1,Math.max(0,v/opt.max));
+  // cadran
+  const bg=g.createRadialGradient(cx,cy,r*.2,cx,cy,r*1.15); bg.addColorStop(0,'#161b23'); bg.addColorStop(1,'#07090c');
+  g.fillStyle=bg; g.beginPath(); g.arc(cx,cy,r*1.12,0,7); g.fill();
+  g.strokeStyle='#2a313c'; g.lineWidth=2; g.beginPath(); g.arc(cx,cy,r*1.12,0,7); g.stroke();
+  // piste
+  g.lineCap='butt'; g.lineWidth=r*.09; g.strokeStyle='#1c222b'; g.beginPath(); g.arc(cx,cy,r,a0,a0+sweep); g.stroke();
+  if(opt.red){ g.strokeStyle='rgba(255,61,31,.55)'; g.beginPath(); g.arc(cx,cy,r,A(opt.red),a0+sweep); g.stroke(); }
+  // valeur
+  g.strokeStyle=opt.color; g.shadowColor=opt.color; g.shadowBlur=14; g.beginPath(); g.arc(cx,cy,r,a0,A(val)); g.stroke(); g.shadowBlur=0;
+  // graduations
+  g.fillStyle=css('--muted'); g.textAlign='center'; g.textBaseline='middle'; g.font=`600 ${Math.round(S*.045)}px ${css('--display')}`;
+  for(let v=0; v<=opt.max+1e-6; v+=opt.minor){ const a=A(v), major=Math.abs(v/opt.major-Math.round(v/opt.major))<1e-6;
+    const r1=r*(major?.78:.83), r2=r*.88; g.strokeStyle= opt.red && v>=opt.red ? css('--red') : major?'#c7cfdb':'#4a5463'; g.lineWidth=major?2.5:1.2;
+    g.beginPath(); g.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1); g.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2); g.stroke();
+    if(major) g.fillText(String(Math.round(v)), cx+Math.cos(a)*r*.66, cy+Math.sin(a)*r*.66); }
+  // aiguille
+  const an=A(val); g.strokeStyle=css('--red'); g.lineWidth=3; g.lineCap='round'; g.shadowColor=css('--red'); g.shadowBlur=10;
+  g.beginPath(); g.moveTo(cx-Math.cos(an)*r*.1,cy-Math.sin(an)*r*.1); g.lineTo(cx+Math.cos(an)*r*.9,cy+Math.sin(an)*r*.9); g.stroke(); g.shadowBlur=0;
+  g.fillStyle='#0b0e12'; g.beginPath(); g.arc(cx,cy,r*.16,0,7); g.fill(); g.strokeStyle='#3a4250'; g.lineWidth=2; g.stroke();
+  // lecture
+  g.fillStyle=css('--fg'); g.font=`700 ${Math.round(S*.15)}px ${css('--display')}`;
+  g.fillText(opt.raw==null?'–':opt.raw.toFixed(opt.dec||0), cx, cy+r*.42);
+  g.fillStyle=css('--muted'); g.font=`600 ${Math.round(S*.045)}px ${css('--display')}`;
+  g.fillText(opt.unit, cx, cy+r*.62); g.fillText(opt.label, cx, cy+r*.84);
+}
+function renderGauges(){
+  drawGauge($('gaugeSpeed'), gaugeState.speed, {max:50,major:10,minor:2.5,color:css('--cyan'),unit:'KM/H',label:'VITESSE',raw:live.speed,dec:1});
+  drawGauge($('gaugeCad'), gaugeState.cad, {max:140,major:20,minor:10,red:110,color:css('--amber'),unit:'TR/MIN',label:'CADENCE',raw:live.cad});
+}
+let rafOn=false;
+function rafLoop(){ if(!rafOn) return;
+  const tS=live.speed||0, tC=live.cad||0;
+  gaugeState.speed+=(tS-gaugeState.speed)*.12; gaugeState.cad+=(tC-gaugeState.cad)*.12;
+  renderGauges(); requestAnimationFrame(rafLoop); }
+
+function buildShift(){
+  const n=Math.min(32, Math.round((range.max-range.min)/range.inc)+1);
+  $('shift').innerHTML = Array.from({length:n},(_,i)=>`<i style="--c:${resColor(i/((n-1)||1))}"></i>`).join('');
+}
+function renderShift(){
+  const leds=$('shift').children, n=leds.length, cur= live.res ?? target, tg=target;
+  for(let i=0;i<n;i++){ const v=range.min+i*(range.max-range.min)/((n-1)||1);
+    leds[i].classList.toggle('on', cur!=null && v<=cur+1e-6);
+    leds[i].classList.toggle('tgt', tg!=null && Math.abs(v-tg)<(range.max-range.min)/((n-1)||1)/2); }
+}
+
+let samples=[];
+function drawLive(){
+  const {g,w,h}=prep($('liveChart')), Sm=samples, L=30, R=30, T=6, B=6, W=w-L-R, H=h-T-B;
+  g.font=`600 10px ${css('--display')}`; g.fillStyle=css('--dim'); g.strokeStyle='rgba(255,255,255,.05)';
+  const maxSp=Math.max(30,...Sm.map(s=>s.speed||0))*1.1;
+  for(let k=0;k<=3;k++){ const y=T+H*k/3; g.beginPath(); g.moveTo(L,y); g.lineTo(L+W,y); g.stroke();
+    g.textAlign='right'; g.fillText(Math.round(maxSp*(1-k/3)),L-6,y+3); g.textAlign='left'; g.fillText(Math.round(range.max-(range.max-range.min)*k/3),L+W+6,y+3); }
+  if(Sm.length<2){ g.textAlign='center'; g.fillStyle=css('--muted'); g.fillText('LE GRAPHIQUE SE REMPLIT EN ROULANT',L+W/2,T+H/2); return; }
+  const tmax=Math.max(60,Sm[Sm.length-1].t), X=t=>L+t/tmax*W, Yr=r=>T+H-resFrac(r??range.min)*H;
+  const grd=g.createLinearGradient(0,T,0,T+H); grd.addColorStop(0,'rgba(255,61,31,.8)'); grd.addColorStop(1,'rgba(255,61,31,.25)');
+  g.fillStyle=grd; g.beginPath(); g.moveTo(X(Sm[0].t),T+H); let ly=Yr(Sm[0].res);
+  Sm.forEach((s,i)=>{ const y=Yr(s.res); if(i) g.lineTo(X(s.t),ly); g.lineTo(X(s.t),y); ly=y; });
+  g.lineTo(X(Sm[Sm.length-1].t),T+H); g.closePath(); g.fill();
+  g.strokeStyle=css('--cyan'); g.lineWidth=2; g.shadowColor=css('--cyan'); g.shadowBlur=6; g.beginPath();
+  Sm.forEach((s,i)=>{ const y=T+H-(s.speed||0)/maxSp*H; i?g.lineTo(X(s.t),y):g.moveTo(X(s.t),y); }); g.stroke(); g.shadowBlur=0;
+}
+
+/* ===== Données live ===== */
+const live={ speed:null, cad:null, pow:null, res:null, dist:null, kcal:null, hr:null };
+let hrExt=false;
+function showLive(){
+  const set=(id,v,u,d=0)=>{ $(id).innerHTML=(v==null?'–':Number(v).toFixed(d))+(u?`<small>${u}</small>`:''); };
+  set('gSpeed',live.speed,'km/h',1); set('gCad',live.cad,'tr/min'); set('gPow',live.pow,'W'); set('gRes',live.res??target,'');
+  set('rPow',live.pow,'W'); set('rDist',live.dist==null?null:live.dist/1000,'km',2); set('rKcal',live.kcal,'kcal'); set('rHr',live.hr,'bpm');
+  $('rRes').textContent = target ?? live.res ?? '–';
+  renderShift();
+}
+
+/* ===== Bluetooth FTMS ===== */
+const FTMS=0x1826, C_BIKE=0x2ad2, C_CP=0x2ad9, C_RANGE=0x2ad6, C_STATUS=0x2ada;
+let dev=null, cp=null, sim=null, q=Promise.resolve(), target=null, hasControl=false;
+const connected=()=>!!(cp||sim);
+
+function setConn(state,txt){
+  for(const [l,t] of [['led','connTxt'],['led2','connTxt2']]){ $(l).className='led '+(state||''); $(t).className='conntxt '+(state?'on':''); $(t).textContent=txt; }
+  const c=connected(); $('btnConnect').hidden=c; $('btnSim').hidden=c; $('btnDisc').hidden=!c;
+  $('rangeTxt').textContent=`Résistance ${range.min} à ${range.max}`;
+  $('launchHint').textContent = c ? 'Prêt à rouler.' : 'Connecte le vélo ou lance le mode démo.';
+}
+function cpSend(bytes,what){
+  if(sim){ sim.onCmd(bytes); return Promise.resolve(); }
+  if(!cp) return Promise.resolve();
+  q=q.then(()=>cp.writeValueWithResponse(new Uint8Array(bytes)))
+     .then(()=>log(`→ ${what} [${bytes.map(b=>b.toString(16).padStart(2,'0')).join(' ')}]`))
+     .catch(e=>log(`✗ ${what} : ${e.message}`));
+  return q;
+}
+async function requestControl(){ if(hasControl) return; await cpSend([0x00],'Demande de contrôle'); hasControl=true; }
+async function setResistance(r){
+  r=clampRes(r); target=r; showLive(); await requestControl();
+  const enc=$('encSel').value; let bytes;
+  if(enc==='u8x10') bytes=[0x04,Math.round(r*10)&0xff];
+  else if(enc==='s16x10'){ const v=Math.round(r*10); bytes=[0x04,v&0xff,(v>>8)&0xff]; }
+  else bytes=[0x04,Math.round(r)&0xff];
+  return cpSend(bytes,`Résistance ${r}`);
+}
+function parseBike(dv){
+  let o=0; const f=dv.getUint16(o,true); o+=2;
+  if(!(f&1)){ live.speed=dv.getUint16(o,true)/100; o+=2; }
+  if(f&2) o+=2;
+  if(f&4){ live.cad=dv.getUint16(o,true)/2; o+=2; }
+  if(f&8) o+=2;
+  if(f&16){ live.dist=dv.getUint16(o,true)+(dv.getUint8(o+2)<<16); o+=3; }
+  if(f&32){ live.res=dv.getInt16(o,true); o+=2; }
+  if(f&64){ live.pow=dv.getInt16(o,true); o+=2; }
+  if(f&128) o+=2;
+  if(f&256){ live.kcal=dv.getUint16(o,true); o+=5; }
+  if(f&512){ const h=dv.getUint8(o); if(!hrExt&&h>0) live.hr=h; o+=1; }
+  showLive();
+}
+async function connectBike(){
+  try{
+    dev=await navigator.bluetooth.requestDevice({ filters:[{services:[FTMS]},{namePrefix:'Domyos'}], optionalServices:[FTMS] });
+    setConn('', 'Connexion…'); log('Appareil choisi : '+dev.name);
+    dev.addEventListener('gattserverdisconnected',onDisconnected);
+    const svc=await (await dev.gatt.connect()).getPrimaryService(FTMS);
+    try{ const rv=await (await svc.getCharacteristic(C_RANGE)).readValue();
+      range={ min:rv.getInt16(0,true)/10, max:rv.getInt16(2,true)/10, inc:Math.max(.1,rv.getUint16(4,true)/10) };
+      if(range.inc<1&&Number.isInteger(range.min)&&Number.isInteger(range.max)) range.inc=1;
+      log(`Plage de résistance lue : ${range.min} → ${range.max} (pas ${range.inc})`);
+    }catch(e){ log('Plage de résistance non lue, défaut 1–16'); }
+    const bike=await svc.getCharacteristic(C_BIKE);
+    bike.addEventListener('characteristicvaluechanged',e=>parseBike(e.target.value)); await bike.startNotifications();
+    cp=await svc.getCharacteristic(C_CP);
+    cp.addEventListener('characteristicvaluechanged',e=>{ const v=e.target.value;
+      if(v.getUint8(0)===0x80){ const ok=v.getUint8(2)===1; log(`← Réponse opcode ${v.getUint8(1).toString(16)} : ${ok?'OK':'refusé (code '+v.getUint8(2)+')'}`); } });
+    await cp.startNotifications();
+    try{ const st=await svc.getCharacteristic(C_STATUS); st.addEventListener('characteristicvaluechanged',e=>log('État machine : 0x'+e.target.value.getUint8(0).toString(16))); await st.startNotifications(); }catch(e){}
+    hasControl=false; buildShift(); setConn('on', dev.name||'Vélo connecté'); renderAll(); renderCoach();
+  }catch(e){ log('Connexion annulée ou impossible : '+e.message); setConn('','Non connecté'); }
+}
+function onDisconnected(){ cp=null; hasControl=false; log('Vélo déconnecté'); setConn('','Déconnecté'); if(run.active) pause(true); }
+$('btnConnect').onclick=connectBike;
+$('btnDisc').onclick=()=>{ if(sim){ sim.stop(); sim=null; setConn('','Non connecté'); return; } if(dev&&dev.gatt.connected) dev.gatt.disconnect(); };
+
+/* ===== Mode démo ===== */
+$('btnSim').onclick=()=>{
+  let res=range.min, dist=0, kcal=0, t=0;
+  const id=setInterval(()=>{ t++; const cad=80+Math.sin(t/9)*8-(res-range.min)*.9+(Math.random()*4-2);
+    live.cad=Math.max(40,cad); live.speed=live.cad*.36*(1-(res-range.min)/60); live.pow=Math.round(res*live.cad*.16+20);
+    live.res=res; dist+=live.speed/3.6; kcal+=live.pow/1000; live.dist=dist; live.kcal=Math.round(kcal); if(!hrExt) live.hr=Math.round(95+live.pow*.25);
+    showLive(); },1000);
+  sim={ stop(){ clearInterval(id); }, onCmd(b){ if(b[0]===0x04){ const v=$('encSel').value==='u8x1'?b[1]:(b[1]|(b[2]||0)<<8)/10; res=clampRes(v); log('[démo] Résistance → '+res); } } };
+  setConn('sim','Mode démo'); log('Mode démo lancé (vélo simulé)');
+};
+
+/* ===== Vues ===== */
+let wake=null;
+async function showRide(on){
+  $('vGarage').hidden=on; $('vRide').hidden=!on; window.scrollTo(0,0);
+  if(on){ rafOn=true; requestAnimationFrame(rafLoop);
+    try{ await document.documentElement.requestFullscreen?.(); }catch(e){}
+    try{ wake=await navigator.wakeLock?.request('screen'); }catch(e){} }
+  else { rafOn=false; try{ if(document.fullscreenElement) await document.exitFullscreen(); }catch(e){} try{ wake?.release(); }catch(e){} wake=null; renderAll(); }
+}
+
+/* ===== Séance ===== */
+let run={ active:false, paused:false, idx:-1, elapsed:0, timer:null };
+const blockAt=t=>{ let acc=0; const bl=run.prog.blocks; for(let i=0;i<bl.length;i++){ if(t<acc+bl[i].dur) return {i,left:acc+bl[i].dur-t}; acc+=bl[i].dur; } return null; };
+
+function startRide(prog, coachMode, hintId){
+  const hint=$(hintId);
+  if(!connected()){ hint.textContent='Connecte d’abord le vélo (ou le mode démo).'; hint.style.color='var(--amber)'; return; }
+  hint.style.color='';
+  run={ active:true, paused:false, idx:-1, elapsed:0, timer:null, start:new Date(), dist0:live.dist||0, kcal0:live.kcal||0,
+        prog, coach:coachMode, coachT:0, cres:null };
+  samples=[]; $('cBanner').hidden=!coachMode;
+  $('rName').textContent=prog.name; buildShift(); showRide(true);
+  requestControl().then(()=>cpSend([0x07],'Départ'));
+  tick(); loop(); uiRun();
+}
+$('btnRide').onclick=()=>startRide(JSON.parse(JSON.stringify(cur())), false, 'launchHint');
+$('btnCoach').onclick=()=>startRide(coachProgram(), true, 'coachHint');
+function loop(){ clearInterval(run.timer); run.timer=setInterval(()=>{ run.elapsed++; tick(); },1000); }
+function tick(){
+  const b=blockAt(run.elapsed), bl=run.prog.blocks, tot=totalOf(run.prog);
+  if(!b){ finish(); return; }
+  if(b.i!==run.idx){ run.idx=b.i; run.coachT=0; if(bl[b.i].coach) run.cres=bl[b.i].res; setResistance(bl[b.i].res); }
+  if(run.coach) coachStep(bl[b.i], b.i);
+  $('curLbl').textContent=bl[b.i].label;
+  $('curCd').textContent=fmt(b.left); $('curCd').classList.toggle('hot', b.left<=5);
+  const nx=bl[b.i+1]; $('nextLbl').innerHTML = nx ? `Ensuite <b>${esc(nx.label)}</b> · ${fmt(nx.dur)} · résist. <b>${nx.res}</b>` : '<b>Dernier bloc</b>';
+  $('rElapsed').textContent=`${fmt(run.elapsed)} / ${fmt(tot)}`;
+  $('progBar').style.width=(run.elapsed/tot*100)+'%';
+  samples.push({ t:run.elapsed, speed:live.speed, res:target, pow:live.pow, cad:live.cad, hr:live.hr });
+  drawLive(); drawProfile($('rideProg'),run.prog,run.idx,run.elapsed);
+}
+function pause(fromDisc){ if(!run.active) return; run.paused=true; clearInterval(run.timer); if(!fromDisc) cpSend([0x08,0x02],'Pause'); uiRun(); }
+function resume(){ if(!connected()) return; run.paused=false; cpSend([0x07],'Reprise'); loop(); uiRun(); }
+function uiRun(){ $('btnPause').textContent = run.paused ? 'Reprendre' : 'Pause'; }
+$('btnPause').onclick=()=> run.paused ? resume() : pause(false);
+$('btnStop').onclick=finish;
+$('resPlus').onclick=()=>{ if(connected()) setResistance((target??range.min)+range.inc); };
+$('resMinus').onclick=()=>{ if(connected()) setResistance((target??range.min)-range.inc); };
+
+function finish(){
+  clearInterval(run.timer); if(!run.active) return;
+  const pw=samples.filter(s=>s.pow!=null), avgP=pw.length?Math.round(pw.reduce((a,s)=>a+s.pow,0)/pw.length):null;
+  const sp=samples.filter(s=>s.speed!=null), avgS=sp.length?sp.reduce((a,s)=>a+s.speed,0)/sp.length:null;
+  const e={ date:run.start.toISOString(), name:run.prog.name, coach:!!run.coach, dur:run.elapsed,
+    dist:live.dist!=null?(live.dist-run.dist0)/1000:null, avgP, avgS, kcal:live.kcal!=null?live.kcal-run.kcal0:null };
+  const h=store.get('vl_hist',[]); h.unshift(e); store.set('vl_hist',h.slice(0,30));
+  cpSend([0x08,0x01],'Stop'); run.active=false; run.paused=false;
+  const cell=(k,v,u)=>`<div class="ro"><div class="k">${k}</div><div class="v">${v}<small>${u}</small></div></div>`;
+  $('finStats').innerHTML = cell('Temps',fmt(e.dur),'') + cell('Distance',e.dist!=null?e.dist.toFixed(2):'–','km')
+    + cell('Puissance moy.',avgP??'–','W') + cell('Calories',e.kcal??'–','kcal');
+  $('fb').hidden=!run.coach; $('fbDone').hidden=true; $('btnBack').hidden=!!run.coach;
+  $('finish').hidden=false; renderHist(); renderCoach();
+}
+$('btnBack').onclick=()=>{ $('finish').hidden=true; showRide(false); };
+
+function renderHist(){
+  const h=store.get('vl_hist',[]);
+  $('hist').innerHTML = h.length ? h.map(e=>`<div class="h"><b>${esc(e.name)}</b><span>${new Date(e.date).toLocaleDateString('fr-FR')}</span>
+    <span>${fmt(e.dur)}${e.dist!=null?' · '+e.dist.toFixed(2)+' km':''}${e.avgP!=null?' · '+e.avgP+' W moy.':''}</span><span>${e.kcal!=null?e.kcal+' kcal':''}</span></div>`).join('')
+    : '<p class="hint" style="padding:8px 0">Pas encore de séance enregistrée.</p>';
+}
+
+/* ===== Coach perte de poids ===== */
+let profile=store.get('vl_profile',{ age:null, perWeek:3, maxDur:20 });
+let coach=store.get('vl_coach',{ dur:12*60, base:null });
+const saveCoach=()=>{ store.set('vl_profile',profile); store.set('vl_coach',coach); };
+const baseRes=()=> clampRes(coach.base ?? range.min+2);
+function zone(){ if(!profile.age) return null; const mx=Math.round(208-0.7*profile.age);
+  return { max:mx, lo:Math.round(mx*.6), hi:Math.round(mx*.7), red:Math.round(mx*.8) }; }
+function coachProgram(){
+  const total=Math.min(coach.dur, profile.maxDur*60), main=Math.max(120,total-360), b=baseRes(), easy=clampRes(b-2);
+  return { id:'coach', name:'Coach perte de poids', blocks:[
+    {label:'Échauffement',dur:180,res:easy},{label:'Zone brûle-graisses',dur:main,res:b,coach:true},{label:'Retour au calme',dur:180,res:easy}] };
+}
+function bannerState(msg){
+  const z=zone(), hr=live.hr, el=$('cBanner');
+  $('cbHr').innerHTML=(hr??'–')+'<small>BPM</small>';
+  $('cbZone').textContent = z ? `Zone cible ${z.lo}–${z.hi} bpm` : 'Pas de zone : renseigne ton âge dans le profil';
+  let st='';
+  if(z && hr!=null) st = hr>=z.red ? 'red' : hr>z.hi ? 'high' : hr>=z.lo ? 'in' : 'low';
+  el.className='cbanner '+st;
+  if(msg) $('cbMsg').textContent=msg;
+}
+function coachStep(block){
+  run.coachT++;
+  const z=zone(), hr=live.hr, cad=live.cad;
+  // sécurité, valable dans tous les blocs
+  if(z && hr!=null && hr>=z.red){ if(target!==range.min) setResistance(range.min); bannerState('Cardio trop haut : on lâche tout, respire'); return; }
+  if(!block.coach){ bannerState(run.idx===0?'On s’échauffe tranquille':'Retour au calme, bien joué'); return; }
+  if(run.coachT===1){ bannerState('C’est parti, on cherche ta zone'); return; }
+  if(run.coachT<45 || run.coachT%15!==0){ bannerState(); return; }
+  const b=baseRes(), cap=clampRes(b+3); let r=run.cres??b, msg;
+  if(z && hr!=null){
+    if(hr>z.hi){ r-=range.inc; msg='Un peu haut, on allège'; }
+    else if(hr<z.lo && (cad??0)>=55){ r+=range.inc; msg='Tu peux en donner un peu plus'; }
+    else msg = hr>=z.lo ? 'Parfait, reste dans cette zone' : 'Garde ton rythme';
+  } else {
+    if(cad!=null && cad<50){ r-=range.inc; msg='Tu ralentis, on allège'; }
+    else if(cad!=null && cad>85){ r+=range.inc; msg='Bonne cadence, on monte un cran'; }
+    else msg='Bon rythme, continue';
+  }
+  r=Math.min(cap,clampRes(r));
+  if(r!==run.cres){ run.cres=r; setResistance(r); }
+  bannerState(msg);
+}
+function weekCount(){ const now=new Date(), mon=new Date(now); mon.setHours(0,0,0,0); mon.setDate(mon.getDate()-((mon.getDay()+6)%7));
+  return store.get('vl_hist',[]).filter(e=>e.coach && new Date(e.date)>=mon).length; }
+function renderCoach(){
+  coach.dur=Math.min(coach.dur, profile.maxDur*60);
+  $('cDur').textContent=fmt(Math.min(coach.dur,profile.maxDur*60));
+  $('cBase').textContent=baseRes();
+  const z=zone(); $('cZone').textContent = z ? `${z.lo}–${z.hi} bpm` : 'Âge manquant';
+  $('cWeek').textContent=`${weekCount()} / ${profile.perWeek}`;
+  $('pfAge').value=profile.age??''; $('pfWeek').value=profile.perWeek; $('pfMax').value=profile.maxDur;
+  $('coachHint').style.color='';
+  $('coachHint').textContent = !z ? 'Renseigne ton âge dans « Mon profil » pour que le coach se règle sur ton cardio.'
+    : hrExt ? 'Cardio connecté : le coach ajuste la résistance pour te garder dans ta zone.'
+    : 'Sans cardio connecté, le coach se règle sur ta cadence. Branche ta montre pour un guidage plus précis.';
+}
+$('pfAge').onchange=e=>{ const v=parseInt(e.target.value); profile.age = v>=14&&v<=99 ? v : null; saveCoach(); renderCoach(); };
+$('pfWeek').onchange=e=>{ profile.perWeek=Math.min(7,Math.max(1,parseInt(e.target.value)||3)); saveCoach(); renderCoach(); };
+$('pfMax').onchange=e=>{ profile.maxDur=Math.min(60,Math.max(10,parseInt(e.target.value)||20)); saveCoach(); renderCoach(); };
+function feedback(kind){
+  const maxS=profile.maxDur*60, b=baseRes();
+  if(kind==='hard'){ coach.dur=Math.max(8*60,coach.dur-60); coach.base=Math.max(range.min,b-range.inc); }
+  if(kind==='ok'){ if(coach.dur<maxS) coach.dur=Math.min(maxS,coach.dur+60); else coach.base=clampRes(b+range.inc); }
+  if(kind==='easy'){ coach.dur=Math.min(maxS,coach.dur+120); coach.base=clampRes(b+range.inc); }
+  saveCoach(); renderCoach();
+  $('fb').hidden=true; $('btnBack').hidden=false; $('fbDone').hidden=false;
+  $('fbDone').textContent=`C’est noté. Prochaine séance : ${fmt(coach.dur)}, résistance de base ${baseRes()}.`;
+}
+$('fbHard').onclick=()=>feedback('hard'); $('fbOk').onclick=()=>feedback('ok'); $('fbEasy').onclick=()=>feedback('easy');
+
+/* cardio externe (montre via HeartCast, ceinture…) : service Heart Rate standard */
+async function connectHr(){
+  try{
+    const d=await navigator.bluetooth.requestDevice({ filters:[{services:['heart_rate']}] });
+    $('hrTxt').textContent='Cardio : connexion…';
+    const c=await (await (await d.gatt.connect()).getPrimaryService('heart_rate')).getCharacteristic('heart_rate_measurement');
+    c.addEventListener('characteristicvaluechanged',e=>{ const v=e.target.value, f=v.getUint8(0); live.hr = f&1 ? v.getUint16(1,true) : v.getUint8(1); showLive(); if(run.active&&run.coach) bannerState(); });
+    await c.startNotifications();
+    hrExt=true; $('hrLed').className='led on'; $('hrTxt').textContent='Cardio : '+(d.name||'connecté'); $('btnHr').hidden=true;
+    log('Cardio connecté : '+(d.name||'?'));
+    d.addEventListener('gattserverdisconnected',()=>{ hrExt=false; $('hrLed').className='led'; $('hrTxt').textContent='Cardio : déconnecté'; $('btnHr').hidden=false; log('Cardio déconnecté'); renderCoach(); });
+    renderCoach();
+  }catch(e){ log('Cardio : '+e.message); $('hrTxt').textContent='Cardio : aucun'; }
+}
+$('btnHr').onclick=connectHr;
+
+/* suivi du poids */
+let weights=store.get('vl_weights',[]);
+const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const frDate=s=>{ const [y,m,d]=s.split('-'); return `${d}/${m}/${y.slice(2)}`; };
+$('wDate').value=today();
+$('wAdd').onclick=()=>{ const kg=parseFloat(String($('wKg').value).replace(',','.')), d=$('wDate').value||today();
+  if(!(kg>=30&&kg<=300)) { $('wKg').focus(); return; }
+  weights=weights.filter(w=>w.d!==d); weights.push({d,kg:Math.round(kg*10)/10}); weights.sort((a,b)=>a.d<b.d?-1:1);
+  store.set('vl_weights',weights); $('wKg').value=''; renderWeights(); };
+$('wList').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; weights=weights.filter(w=>w.d!==b.dataset.d); store.set('vl_weights',weights); renderWeights(); });
+function renderWeights(){
+  const W=weights;
+  $('wList').innerHTML = W.length ? W.slice().reverse().map(w=>`<div><span>${frDate(w.d)}</span><b>${w.kg.toFixed(1)} kg</b><button class="sm ghost" data-d="${w.d}" aria-label="Supprimer la pesée">✕</button></div>`).join('') : '<p class="hint">Aucune pesée.</p>';
+  if(W.length){ const f=W[0], l=W[W.length-1], dlt=l.kg-f.kg;
+    $('wSum').innerHTML=`<span>Départ <b>${f.kg.toFixed(1)}</b></span><span>Actuel <b>${l.kg.toFixed(1)}</b></span><span>Écart <b style="color:${dlt<0?'var(--green)':dlt>0?'var(--amber)':'var(--fg)'}">${dlt>0?'+':''}${dlt.toFixed(1)} kg</b></span>`;
+  } else $('wSum').innerHTML='';
+  const {g,w,h}=prep($('wChart')), L=40, R=12, T=10, B=20, CW=w-L-R, CH=h-T-B;
+  g.font=`600 10px ${css('--display')}`; g.fillStyle=css('--dim'); g.strokeStyle='rgba(255,255,255,.05)';
+  if(!W.length){ g.textAlign='center'; g.fillStyle=css('--muted'); g.fillText('AJOUTE TA PREMIÈRE PESÉE POUR VOIR TA COURBE',w/2,h/2); return; }
+  let mn=Math.min(...W.map(x=>x.kg)), mx=Math.max(...W.map(x=>x.kg)); if(mx-mn<4){ const c=(mx+mn)/2; mn=c-2; mx=c+2; }
+  mn=Math.floor(mn-.5); mx=Math.ceil(mx+.5);
+  const t0=new Date(W[0].d).getTime(), t1=Math.max(t0+7*864e5,new Date(W[W.length-1].d).getTime());
+  const X=d=>L+(new Date(d).getTime()-t0)/(t1-t0)*CW, Y=k=>T+(mx-k)/(mx-mn)*CH;
+  for(let k=0;k<=3;k++){ const v=mx-(mx-mn)*k/3, y=Y(v); g.beginPath(); g.moveTo(L,y); g.lineTo(L+CW,y); g.stroke(); g.textAlign='right'; g.fillText(v.toFixed(0),L-6,y+3); }
+  g.textAlign='left'; g.fillText(frDate(W[0].d),L,h-4); g.textAlign='right'; g.fillText(frDate(W[W.length-1].d),L+CW,h-4);
+  g.strokeStyle=css('--green'); g.lineWidth=2; g.beginPath(); W.forEach((x,i)=>i?g.lineTo(X(x.d),Y(x.kg)):g.moveTo(X(x.d),Y(x.kg))); g.stroke();
+  W.forEach((x,i)=>{ g.fillStyle= i===W.length-1 ? css('--green') : '#0b0e12'; g.strokeStyle=css('--green'); g.beginPath(); g.arc(X(x.d),Y(x.kg),i===W.length-1?4.5:3,0,7); g.fill(); g.stroke(); });
+}
+
+/* ===== Démarrage ===== */
+if(!('bluetooth' in navigator)){ $('noBt').hidden=false; $('btnConnect').disabled=true; }
+$('encSel').value=store.get('vl_enc','u8x10'); $('encSel').onchange=e=>store.set('vl_enc',e.target.value);
+buildShift(); renderAll(); renderHist(); showLive(); setConn('','Non connecté'); renderCoach(); renderWeights();
+if(!('bluetooth' in navigator)) $('btnHr').disabled=true;
+addEventListener('resize',()=>{ if(!$('vRide').hidden){ drawLive(); if(run.active) drawProfile($('rideProg'),run.prog,run.idx,run.elapsed); } else { renderBlocks(); renderWeights(); } });
+document.addEventListener('visibilitychange',async()=>{ if(!document.hidden&&rafOn&&!wake){ try{ wake=await navigator.wakeLock?.request('screen'); }catch(e){} } });
+log('Prêt. Chrome/Edge, pédale pour réveiller la console, puis « Connecter le vélo ».');
+})();
+</script>
+</body>
+</html>
